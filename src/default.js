@@ -165,4 +165,3 @@ const OwncloudClient = require('js-owncloud-client');
 window.OC = {
 	client: null
 };
-
