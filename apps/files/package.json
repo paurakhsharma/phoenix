@@ -1,28 +1,8 @@
 {
   "name": "files",
-  "title": "Filebrowser",
-  "icon": "folder",
   "version": "0.1.0",
   "description": "This is the funky frontend app",
   "main": "js/files.bundle.js",
-  "menu": [
-    {
-      "title": "All files",
-      "href": "list/all"
-    },
-    {
-      "title": "Favorites",
-      "href": "favorites"
-    },
-    {
-      "title": "Share by you",
-      "href": "share/outbound"
-    },
-    {
-      "title": "Share with you",
-      "href": "share/inbound"
-    }
-  ],
   "scripts": {
     "watch": "webpack --progress --colors --watch --mode 'development'",
     "build": "webpack -p"
