@@ -3,70 +3,104 @@ OC = new Vue({
     data: {
         nav : [],
         appPath : '/apps',
-        apps : [],
+        apps : {},
         config: {}
     },
+
     mounted () {
+
+        // TODO: Looks ugly, is ugly … Make nice!
+
         this._loadConfig().then(() =>{
-            this._bootApps();
+            this._setupApps().then(() => {
+                this._bootApp(this.getActiveApp().id);
+            })
         });
     },
+
+
+    computed: {
+        activeApp () {
+            return this.apps['market'];
+        }
+    },
+
     methods: {
 
-        // ------------------------------------------------- startup methods ---
+        /**
+         * Write apps.json to this.apps
+         *
+         * @return Promise
+         */
 
-        _loadConfig( ) {
+        _loadConfig () {
             var pr = new Promise((resolve, reject) => {
-
-                $.getJSON('/config.json', (data) => {
-                    this.apps = data.apps;
+                $.getJSON('/apps.json', (apps) => {
+                    this.apps = apps;
                     resolve();
                 });
             });
-
             return pr;
         },
 
-        _bootApps ( ) {
-            for( let app of this.apps ) {
-                requirejs([`${this.appPath}/${app}/js/boot.js`], function( app ) {
-                    app.init();
+
+        /**
+         * Setup all available apps
+         *
+         * @return Promise
+         */
+
+        _setupApps () {
+            var pr = new Promise((resolve, reject) => {
+                _.map(this.apps, (no, i) => {
+                    requirejs([`${this.appPath}/${i}/js/boot.js`], ( app ) => {
+                        app.setup().then((data) => {
+                            this.apps[i] = data;
+                            if ( _.findLastKey(this.apps) === i)
+                                resolve();
+                        })
+                    })
+                });
+            });
+            return pr;
+        },
+
+
+        /**
+         * Boot an application
+         *
+         * @param obj app with appId as key
+         * @return array list of individual addresses
+         */
+
+        _bootApp (app) {
+            var pr = new Promise((resolve, reject) => {
+                requirejs([`${this.appPath}/${app}/js/boot.js`], ( app ) => {
+                    app.boot();
                 })
-            }
+            });
+            return pr;
         },
 
 
         // -------------------------------------------- registration methods ---
 
-        // nav
-
         registerNav ( app, payload ) {
 
             var pr = new Promise((resolve, no) => {
                 this.nav.push(_.assign( {id: app }, payload ));
-                this.nextTick(resolve(`${app} registered`));
+                this.nextTick(resolve(`registered:${app}`));
             })
 
             return pr;
         },
 
-        removeNav( item ) {
-            // nothing here so far
-            return true;
-        },
-
-        // apps
-
-        registerApp () {},
-
-        // config
-
-        registerConfig () {},
+        removeNav() {},
 
         // -------------------------------------------------------- EVENTBUS ---
 
         emit( e, id ) {
-            OC.event.$emit(`${e} ${id}`);
+            OC.event.$emit(`${e}:${id}`);
         },
 
         // --------------------------------------------------------- GETTERS ---
@@ -80,7 +114,7 @@ OC = new Vue({
         },
 
         getActiveApp () {
-            return this.apps[0];
+            return this.apps['market'];
         },
 
         getNavItems () {

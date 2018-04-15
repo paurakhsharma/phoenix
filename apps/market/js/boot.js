@@ -1,27 +1,50 @@
 define({
-    id : 'market',
-    name : 'Market',
-    version : '1.12.0',
-    standalone : true,
-    assets : {
-        js : ['js/market.bundle.js'],
-        css : []
-    },
-    dependencies : [{
-        app : 'phoenix',
-        minVersion : '10.1',
-        maxVersion : '10.1'
-    }],
 
-    init () {
-        OC.registerNav( this.id, {
-            'name' : this.name,
-            'iconMaterial' : 'shopping_cart'
-        }).then(function(returnMessage) {
-            // did it work?
-            console.log(returnMessage);
-        }).catch(function(err) {
-            console.log(`woops: ${err}`);
+    /**
+     * allow for registering the app
+     *
+     * @return promised object containing app id, name, author and version
+     */
+
+    setup () {
+        var pr = new Promise((resolve, reject) => {
+
+            $.getJSON('/apps/market/package.json', function(app) {
+
+                OC.registerNav( app.name, {
+                    'name' : app.name,
+                    'iconMaterial' : 'shopping_cart'
+                });
+
+                resolve({
+                    id      : app.name,
+                    name    : _.upperFirst(app.name),
+                    author  : app.author,
+                    version : app.version
+                });
+
+            })
         });
+
+        return pr;
+    },
+
+
+    /**
+     * Start the application by mounting it to the respective DOM element
+     *
+     * @return promise
+     */
+
+    boot () {
+
+        var pr = new Promise((resolve, reject) => {
+            requirejs(['/apps/market/js/market.js'], ( app ) => {
+                app.$mount('#oc-app-container');
+                resolve();
+            });
+        });
+
+        return pr;
     }
 });
