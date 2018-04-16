@@ -1,50 +1,48 @@
-define({
+define(['/apps/market/js/market.js'], function(market) {
+
+    let app = {}
 
     /**
      * allow for registering the app
      *
-     * @return promised object containing app id, name, author and version
+     * @return deferred promise containing app id, name, author and version
      */
 
-    setup () {
-        var pr = new Promise((resolve, reject) => {
+    app.setup = () => {
+        let deferred = $.Deferred();
 
-            $.getJSON('/apps/market/package.json', function(app) {
+        $.getJSON('/apps/market/package.json', function(pack) {
 
-                OC.registerNav( app.name, {
-                    'name' : app.name,
-                    'iconMaterial' : 'shopping_cart'
-                });
+            OC.registerNav(pack.name, {
+                name: pack.name,
+                iconMaterial: 'shopping_cart'
+            });
 
-                resolve({
-                    id      : app.name,
-                    name    : _.upperFirst(app.name),
-                    author  : app.author,
-                    version : app.version
-                });
+            deferred.resolve({
+                id: pack.name,
+                name: _.upperFirst(pack.name),
+                author: pack.author,
+                version: pack.version
+            });
 
-            })
-        });
+        })
 
-        return pr;
-    },
+        return deferred;
+    }
 
 
     /**
      * Start the application by mounting it to the respective DOM element
      *
-     * @return promise
+     * @return deferred promise
      */
 
-    boot () {
-
-        var pr = new Promise((resolve, reject) => {
-            requirejs(['/apps/market/js/market.js'], ( app ) => {
-                app.$mount('#oc-app-container');
-                resolve();
-            });
-        });
-
-        return pr;
+    app.boot = () => {
+        let deferred = $.Deferred();
+        market.$mount('#oc-app-container');
+        deferred.resolve();
+        return deferred;
     }
+
+    return app;
 });

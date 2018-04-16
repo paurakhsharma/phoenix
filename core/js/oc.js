@@ -4,11 +4,11 @@ OC = new Vue({
         appPath : '/apps',
 
         // config settings
-        config  : {}
+        config  : {},
 
         // models
         nav     : [],
-        apps    : {},
+        apps    : {}
     },
 
     mounted () {
@@ -38,13 +38,14 @@ OC = new Vue({
          */
 
         _loadConfig () {
-            var pr = new Promise((resolve, reject) => {
-                $.getJSON('/apps.json', (apps) => {
-                    this.apps = apps;
-                    resolve();
-                });
+            var deferred = $.Deferred();
+
+            $.getJSON('/apps.json', (apps) => {
+                this.apps = apps;
+                deferred.resolve();
             });
-            return pr;
+
+            return deferred;
         },
 
 
@@ -55,18 +56,22 @@ OC = new Vue({
          */
 
         _setupApps () {
-            var pr = new Promise((resolve, reject) => {
-                _.map(this.apps, (no, i) => {
-                    requirejs([`${this.appPath}/${i}/js/boot.js`], ( app ) => {
-                        app.setup().then((data) => {
-                            this.apps[i] = data;
-                            if ( _.findLastKey(this.apps) === i)
-                                resolve();
-                        })
+            var deferred = $.Deferred();
+
+            _.map(this.apps, (no, i) => {
+                requirejs([`${this.appPath}/${i}/js/boot.js`], ( app ) => {
+                    app.setup().then((data) => {
+                        this.apps[i] = data;
+                        if ( _.findLastKey(this.apps) === i)
+                            deferred.resolve();
                     })
+                }, (err) => {
+                    this.warn( 'OC._setupApps(): ' + err);
+                    deferred.reject(err);
                 });
             });
-            return pr;
+
+            return deferred;
         },
 
 
@@ -78,14 +83,32 @@ OC = new Vue({
          */
 
         _bootApp (app) {
-            var pr = new Promise((resolve, reject) => {
-                requirejs([`${this.appPath}/${app}/js/boot.js`], ( app ) => {
-                    app.boot();
-                })
-            });
-            return pr;
+            var deferred = $.Deferred();
+
+            requirejs([this.pathAppBoot(app)], ( app ) => {
+                app.boot();
+                deferred.resolve();
+            })
+
+            return deferred;
         },
 
+
+        // ------------------------------------------------ logging, warning ---
+
+        pathAppBoot( appname ) {
+            return `${this.appPath}/${appname}/js/boot.js`;
+        },
+
+        // ------------------------------------------------ logging, warning ---
+
+        log ( message ) {
+            console.log( message );
+        },
+
+        warn ( message ) {
+            console.warn( message );
+        },
 
         // -------------------------------------------- registration methods ---
 
