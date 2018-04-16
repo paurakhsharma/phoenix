@@ -1,10 +1,14 @@
 OC = new Vue({
     el  : "#oc",
     data: {
-        nav : [],
         appPath : '/apps',
-        apps : {},
-        config: {}
+
+        // config settings
+        config  : {}
+
+        // models
+        nav     : [],
+        apps    : {},
     },
 
     mounted () {
@@ -70,7 +74,7 @@ OC = new Vue({
          * Boot an application
          *
          * @param obj app with appId as key
-         * @return array list of individual addresses
+         * @return Promise
          */
 
         _bootApp (app) {
