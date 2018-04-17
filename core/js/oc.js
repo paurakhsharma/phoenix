@@ -1,151 +1,174 @@
 OC = new Vue({
-    el  : "#oc",
-    data: {
-        appPath : '/apps',
+	el  : "#oc",
+	data: {
+		appPath : '/apps',
 
-        // config settings
-        config  : {},
+		// config settings
+		config  : {},
 
-        // models
-        nav     : [],
-        apps    : {}
-    },
+		// models
+		nav     : [],
+		apps    : {}
+	},
 
-    mounted () {
+	mounted () {
 
-        // TODO: Looks ugly, is ugly … Make nice!
+		// TODO: Looks ugly, is ugly … Make nice!
 
-        this._loadConfig().then(() =>{
-            this._setupApps().then(() => {
-                this._bootApp(this.getActiveApp().id);
-            })
-        });
-    },
+		this._loadConfig().then(() =>{
+			this._setupApps().then(() => {
+				this._bootApp(this.getActiveApp().id);
+			})
+		});
 
-
-    computed: {
-        activeApp () {
-            return this.apps['market'];
-        }
-    },
-
-    methods: {
-
-        /**
-         * Write apps.json to this.apps
-         *
-         * @return Promise
-         */
-
-        _loadConfig () {
-            var deferred = $.Deferred();
-
-            $.getJSON('/apps.json', (apps) => {
-                this.apps = apps;
-                deferred.resolve();
-            });
-
-            return deferred;
-        },
+		let foo = this._spawnAppContainer();
+		this.log(foo);
+	},
 
 
-        /**
-         * Setup all available apps
-         *
-         * @return Promise
-         */
+	computed: {
+		activeApp () {
+			return this.apps['market'];
+		},
 
-        _setupApps () {
-            var deferred = $.Deferred();
+		wurst () {
+			return Math.random().toString(36).substring(7);
+		}
+	},
 
-            _.map(this.apps, (no, i) => {
-                requirejs([`${this.appPath}/${i}/js/boot.js`], ( app ) => {
-                    app.setup().then((data) => {
-                        this.apps[i] = data;
-                        if ( _.findLastKey(this.apps) === i)
-                            deferred.resolve();
-                    })
-                }, (err) => {
-                    this.warn( 'OC._setupApps(): ' + err);
-                    deferred.reject(err);
-                });
-            });
+	methods: {
 
-            return deferred;
-        },
+		/**
+		 * Write apps.json to this.apps
+		 *
+		 * @return Promise
+		 */
 
+		_loadConfig () {
+			var deferred = $.Deferred();
 
-        /**
-         * Boot an application
-         *
-         * @param obj app with appId as key
-         * @return Promise
-         */
+			$.getJSON('/apps.json', (apps) => {
+				this.apps = apps;
+				deferred.resolve();
+			});
 
-        _bootApp (app) {
-            var deferred = $.Deferred();
-
-            requirejs([this.pathAppBoot(app)], ( app ) => {
-                app.boot();
-                deferred.resolve();
-            })
-
-            return deferred;
-        },
+			return deferred;
+		},
 
 
-        // ------------------------------------------------ logging, warning ---
+		/**
+		 * Setup all available apps
+		 *
+		 * @return Promise
+		 */
 
-        pathAppBoot( appname ) {
-            return `${this.appPath}/${appname}/js/boot.js`;
-        },
+		_setupApps () {
+			var deferred = $.Deferred();
 
-        // ------------------------------------------------ logging, warning ---
+			_.map(this.apps, (no, i) => {
+				requirejs([`${this.appPath}/${i}/js/boot.js`], ( app ) => {
+					app.setup().then((data) => {
+						this.apps[i] = data;
+						if ( _.findLastKey(this.apps) === i)
+							deferred.resolve();
+					})
+				}, (err) => {
+					this.warn( 'OC._setupApps(): ' + err);
+					deferred.reject(err);
+				});
+			});
 
-        log ( message ) {
-            console.log( message );
-        },
+			return deferred;
+		},
 
-        warn ( message ) {
-            console.warn( message );
-        },
 
-        // -------------------------------------------- registration methods ---
+		/**
+		 * Boot an application
+		 *
+		 * @param obj app with appId as key
+		 * @return Promise
+		 */
 
-        registerNav ( app, payload ) {
+		_bootApp (app) {
+			var deferred = $.Deferred();
 
-            var pr = new Promise((resolve, no) => {
-                this.nav.push(_.assign( {id: app }, payload ));
-                this.nextTick(resolve(`registered:${app}`));
-            })
+			requirejs([this.pathAppBoot(app)], ( app ) => {
+				app.boot(this._spawnAppContainer());
+				deferred.resolve();
+			})
 
-            return pr;
-        },
+			return deferred;
+		},
 
-        removeNav() {},
+		_spawnAppContainer () {
 
-        // -------------------------------------------------------- EVENTBUS ---
+			let attr = {
+				id    : this.getRandom(),
+				class : 'oc-app-container',
+				text  : 'Loading ...'
+			};
 
-        emit( e, id ) {
-            OC.event.$emit(`${e}:${id}`);
-        },
+			// Reset app container
+			$('#oc-content').html( $('<div>', attr ) );
+			return `#${attr.id}`;
+		},
 
-        // --------------------------------------------------------- GETTERS ---
+		getRandom () {
+			return 'c' + Math.random().toString(36).substring(2);
+		},
 
-        getConfig () {
-            return this.config;
-        },
+		// ------------------------------------------------ logging, warning ---
 
-        getApps () {
-            return this.apps;
-        },
+		pathAppBoot( appname ) {
+			return `${this.appPath}/${appname}/js/boot.js`;
+		},
 
-        getActiveApp () {
-            return this.apps['market'];
-        },
+		// ------------------------------------------------ logging, warning ---
 
-        getNavItems () {
-            return this.nav;
-        }
-    },
+		log ( message ) {
+			console.log( message );
+		},
+
+		warn ( message ) {
+			console.warn( message );
+		},
+
+		// -------------------------------------------- registration methods ---
+
+		registerNav ( app, payload ) {
+
+			var pr = new Promise((resolve, no) => {
+				this.nav.push(_.assign( {id: app }, payload ));
+				this.nextTick(resolve(`registered:${app}`));
+			})
+
+			return pr;
+		},
+
+		removeNav() {},
+
+		// -------------------------------------------------------- EVENTBUS ---
+
+		emit( e, id ) {
+			OC.event.$emit(`${e}:${id}`);
+		},
+
+		// --------------------------------------------------------- GETTERS ---
+
+		getConfig () {
+			return this.config;
+		},
+
+		getApps () {
+			return this.apps;
+		},
+
+		getActiveApp () {
+			return this.apps['market'];
+		},
+
+		getNavItems () {
+			return this.nav;
+		}
+	},
 })
