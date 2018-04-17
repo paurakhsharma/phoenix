@@ -1,14 +1,17 @@
 module.exports = {
 	devtool: 'source-map',
 	entry: './src/default.js',
-    resolve: {
-        alias: {
-            vue: 'vue/dist/vue.js'
-        }
-    },
-	output : {
+	resolve: {
+		alias: {
+			vue: 'vue/dist/vue.js'
+		}
+	},
+	output: {
 		path: `${__dirname}/core/js`,
-		filename : 'core.bundle.js'
+		filename: 'core.bundle.js',
+		library: "OC",
+		libraryTarget: "var",
+		libraryExport: "default"
 	},
 	module: {
 		rules: [{

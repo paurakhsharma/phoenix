@@ -1,167 +1,170 @@
+// import { Vue as cVue } from 'vue';
+import _   from 'lodash';
+import $   from 'jquery';
 
-import LoginDialog from './components/Login-Dialog.vue';
+var cVue = require('vue');
 
-const $        = require("jquery");
-const Vue      = require('vue');
+OC = new cVue({
+	el  : "#oc",
+	data: {
+		appPath : '/apps',
 
-// a few lodash methods
-const isEmpty  = require('lodash/isEmpty');
-const assignIn = require('lodash/assignIn');
+		// config settings
+		config  : {},
 
-const ocHead = new Vue({
-    el : '#oc-head',
-    data: {
-        core: {
-            theme       : 'owncloud',
-            installed   : true,
-            version     : null,
-            instanceid  : null,
-            startApp    : null,
-            apps        : {
-                installed : [],
-                enabled   : []
-            }
-        },
-        app: {
-            name    : null,
-            title   : null,
-            icon    : null,
-            menu    : [],
-            plugins : {},
-            assets  : {
-                js  : null,
-                css : null
-            }
-        }
-    },
-    mounted () {
-        // load core package data
-        this.getCoreConfig().then(()=> {
-            this.getAppConfig().then(() => {
-                this._loadAppAssets();
-            });
-        });
-    },
-
-    computed: {
-        coreIsLoading() {
-            return this.core.instanceid.length != null
-        },
-
-        pageTitle () {
-            return `${this.core.title} &ndash; ${this.app.title}`;
-        },
-
-        appName () {
-            // determine app by path
-            let pathname = document.location.pathname.substr(1);
-
-            if (pathname.length > 0)
-                return pathname
-
-            if (this.core.startApp)
-                return this.core.startApp
-
-            return null;
-        }
-    },
-
-    methods: {
-        getApp () {
-            // determine app by path
-            let pathname = document.location.pathname.substr(1);
-
-            if (!isEmpty(pathname.length))
-                return pathname
-
-            if (this.core.startApp)
-                return this.core.startApp
-
-            return null;
-        },
-
-        // reading data from the core API
-        getCoreConfig () {
-            return new Promise((resolve, reject) => {
-                this._readPackage('config.json').then((data) => {
-                    this.core = assignIn(this.core, data);
-
-                    OC.config = data;
-                    if (!OC.config.backendUrl) {
-                        OC.config.backendUrl = location.protocol + '//' + location.host + location.pathname;
-                    }
-                    OC.client = new OwncloudClient(OC.config.backendUrl);
-
-                    resolve();
-                }).catch(function(err) {
-                    reject('can not getCoreConfig ' + err);
-                });
-            });
-        },
-
-        getAppConfig () {
-            return new Promise((resolve, reject) => {
-                this._readPackage(`apps/${this.getApp()}/package.json`).then((app) => {
-                    this.app = {
-                        name        : app.name,
-                        title       : app.title,
-                        icon        : app.icon,
-                        version     : app.version,
-                        author      : app.author,
-                        license     : app.license,
-                        description : app.description,
-                        menu        : app.menu,
-                        assets      : {
-                            js  : app.main,
-                            css : app.css
-                        }
-                    }
-                    resolve();
-                }).catch(function() {
-                    reject(`failed to load /apps/${path}/package.json`);
-                });
-            });
-        },
-
-        _readPackage( pathToAPI ) {
-            return new Promise((resolve, reject) => {
-                $.getJSON(pathToAPI, (data) => {
-                    resolve(data);
-                }).fail(function() {
-                    reject(`can't read: ${pathToAPI}`);
-                });
-            });
-        },
-
-        _loadAppAssets() {
-
-            let $main = $('<script>', {
-                "src"   : `apps/${this.app.name}/${this.app.assets.js}`,
-                "defer" : true
-            });
-
-            $('body').append($main);
-        }
-    }
-});
-
-const ocDialogs = new Vue({
-	el: '#oc-dialogs',
-	components: {
-		LoginDialog
+		// models
+		nav     : [],
+		apps    : {}
 	},
 
 	mounted () {
-        //uncomment to test login
-		//UIkit.modal('#oc-dialog-login').show();
-	}
-});
 
-const OwncloudClient = require('js-owncloud-client');
+		// TODO: Looks ugly, is ugly … Make nice!
+		this._loadConfig().then(() =>{
+			this.log('_loadConfig');
+			this._setupApps().then(() => {
+				this.log('_setupApps');
+				this._bootApp(this.getActiveApp());
+			})
+		});
+	},
 
-// TODO: define in separate file
+	methods: {
 
-// global namespace
-window.OC = {
-	client: null
-};
+		/**
+		 * Write apps.json to this.apps
+		 *
+		 * @return Promise
+		 */
+
+		_loadConfig () {
+			var deferred = $.Deferred();
+
+			$.getJSON('/apps.json', (apps) => {
+				this.apps = apps;
+				deferred.resolve();
+			});
+
+			return deferred;
+		},
+
+
+		/**
+		 * Setup all available apps
+		 *
+		 * @return Promise
+		 */
+
+		_setupApps () {
+			var deferred = $.Deferred();
+
+			_.map(this.apps, (app, name) => {
+
+				requirejs([`${this.appPath}/${name}/js/boot.js`], ( boot ) => {
+
+					this.apps[name] = boot.setup();
+
+					if ( _.findLastKey(this.apps) === name)
+						deferred.resolve();
+					})
+				}, (err) => {
+					this.warn( 'OC._setupApps(): ' + err);
+					deferred.reject(err);
+				});
+
+			return deferred;
+		},
+
+
+		/**
+		 * Boot an application
+		 *
+		 * @param obj app with appId as key
+		 * @return Promise
+		 */
+
+		_bootApp (app) {
+			var deferred = $.Deferred();
+
+			requirejs([this.pathAppBoot(app)], ( app ) => {
+				app.boot(this._spawnAppContainer());
+				deferred.resolve();
+			})
+
+			return deferred;
+		},
+
+		_spawnAppContainer () {
+
+			let attr = {
+				id    : this.getRandom(),
+				class : 'oc-app-container',
+				text  : 'Loading ...'
+			};
+
+			// Reset app container
+			$('#oc-content').html( $('<div>', attr ) );
+			return `#${attr.id}`;
+		},
+
+		getRandom () {
+			return 'c' + Math.random().toString(36).substring(2);
+		},
+
+		// ------------------------------------------------ logging, warning ---
+
+		pathAppBoot( appname ) {
+			return `${this.appPath}/${appname}/js/boot.js`;
+		},
+
+		// ------------------------------------------------ logging, warning ---
+
+		log ( message ) {
+			console.log( message );
+		},
+
+		warn ( message ) {
+			console.warn( message );
+		},
+
+		// -------------------------------------------- registration methods ---
+
+		registerNav ( app, payload ) {
+
+			var pr = new Promise((resolve, no) => {
+				this.nav.push(_.assign( {id: app }, payload ));
+				this.nextTick(resolve(`registered:${app}`));
+			})
+
+			return pr;
+		},
+
+		removeNav() {},
+
+		// -------------------------------------------------------- EVENTBUS ---
+
+		emit( e, id ) {
+			OC.event.$emit(`${e}:${id}`);
+		},
+
+		// --------------------------------------------------------- GETTERS ---
+
+		getConfig () {
+			return this.config;
+		},
+
+		getApps () {
+			return this.apps;
+		},
+
+		getActiveApp () {
+			return 'files';
+		},
+
+		getNavItems () {
+			return this.nav;
+		}
+	},
+})
+
+export default OC;
