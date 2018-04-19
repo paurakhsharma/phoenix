@@ -1,10 +1,8 @@
-// import { Vue as cVue } from 'vue';
+import Vue from 'vue';
 import _   from 'lodash';
 import $   from 'jquery';
 
-var cVue = require('vue');
-
-OC = new cVue({
+OC = new Vue({
 	el  : "#oc",
 	data: {
 		appPath : '/apps',
