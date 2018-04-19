@@ -21,9 +21,7 @@ OC = new cVue({
 
 		// TODO: Looks ugly, is ugly … Make nice!
 		this._loadConfig().then(() =>{
-			this.log('_loadConfig');
 			this._setupApps().then(() => {
-				this.log('_setupApps');
 				this._bootApp(this.getActiveApp());
 			})
 		});
