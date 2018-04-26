@@ -4,6 +4,7 @@ import $   from 'jquery';
 
 OC = new Vue({
 	el  : "#oc",
+	name : "phoenix",
 	data: {
 		appPath : '/apps',
 
@@ -12,17 +13,21 @@ OC = new Vue({
 
 		// models
 		nav     : [],
-		apps    : {}
+		apps    : []
 	},
 
 	mounted () {
+		// Start with loading the config
+		this._loadConfig();
 
-		// TODO: Looks ugly, is ugly … Make nice!
-		this._loadConfig().then(() =>{
-			this._setupApps().then(() => {
-				this._bootApp(this.getActiveApp());
-			})
+		this.$on('phoenix:configLoaded', () => {
+			this._setupApps()
 		});
+
+		this.$on('phoenix:appsSetup', () => {
+			this._bootApp(_.head(this.apps))
+		});
+
 	},
 
 	methods: {
@@ -34,14 +39,16 @@ OC = new Vue({
 		 */
 
 		_loadConfig () {
-			var deferred = $.Deferred();
-
-			$.getJSON('/apps.json', (apps) => {
-				this.apps = apps;
-				deferred.resolve();
-			});
-
-			return deferred;
+			$.when(
+				$.getJSON('/config.json', (config) => {
+					this.config = config;
+				}),
+				$.getJSON('/apps.json', (apps) => {
+					this.apps = apps;
+				})
+			).then( () => {
+				this.$emit('phoenix:configLoaded');
+			})
 		},
 
 
@@ -52,25 +59,30 @@ OC = new Vue({
 		 */
 
 		_setupApps () {
-			var deferred = $.Deferred();
 
-			_.map(this.apps, (app, name) => {
+			_.forEach(this.apps, (app, i) => {
 
-				requirejs([`${this.appPath}/${name}/js/boot.js`], ( boot ) => {
+				// TODO: Find better var name for 'foo'
+				requirejs([this.appJS(app.id, 'boot')], ( foo ) => {
+					let defaults = {
+						enabled : true,
+						running : false,
+					};
 
-					this.apps[name] = boot.setup();
+					this.apps[i] = _.assignIn(defaults, foo.info);
 
-					if ( _.findLastKey(this.apps) === name)
-						deferred.resolve();
+					// inject self
+					foo.setup(foo).then(() => {
+						if (this.apps.length === ++i) {
+							this.$emit('phoenix:appsSetup')
+						}
 					})
+
 				}, (err) => {
-					this.warn( 'OC._setupApps(): ' + err);
-					deferred.reject(err);
+					this.warn(err);
 				});
-
-			return deferred;
+			});
 		},
-
 
 		/**
 		 * Boot an application
@@ -80,20 +92,18 @@ OC = new Vue({
 		 */
 
 		_bootApp (app) {
-			var deferred = $.Deferred();
-
-			requirejs([this.pathAppBoot(app)], ( app ) => {
-				app.boot(this._spawnAppContainer());
-				deferred.resolve();
+			requirejs([this.appJS(app.id, 'boot')], ( App ) => {
+				App.boot(this._spawnAppContainer(), App).then( () => {
+					this._appSet(app.id, { 'running' : true });
+					this.$emit(app.id + ':booted');
+				})
 			})
-
-			return deferred;
 		},
 
 		_spawnAppContainer () {
 
 			let attr = {
-				id    : this.getRandom(),
+				id    : this.createRandom(),
 				class : 'oc-app-container',
 				text  : 'Loading ...'
 			};
@@ -103,15 +113,52 @@ OC = new Vue({
 			return `#${attr.id}`;
 		},
 
-		getRandom () {
-			return 'c' + Math.random().toString(36).substring(2);
+		/**
+		 * Change the model object of an app
+		 *
+		 * @param id appId
+		 * @param payload object
+		 */
+
+		_appSet (id, payload) {
+
+			let app   = this.getAppById(id),
+				index = _.findIndex(app);
+
+			this.apps[index] = _.assignIn(app, payload);
 		},
 
-		// ------------------------------------------------ logging, warning ---
+		// ---------------------------------------------------------- helper ---
 
-		pathAppBoot( appname ) {
-			return `${this.appPath}/${appname}/js/boot.js`;
+		pathBootJs( app ) {
+
+			let id = (typeof app === 'object') ? app.id : app;
+
+			return `${this.appPath}/${id}/js/boot.js`;
 		},
+
+		getAppById( id ) {
+			return _.find(this.apps, ["id", id] );
+		},
+
+		appJS( app, file ) {
+			return ['/apps', app, 'js', file + '.js'].join('/');
+		},
+
+
+		/**
+		 * Create random string
+		 * will start with "c4…"
+		 *
+		 * @param prefix any string, number
+		 * @return 16 char string
+		 */
+
+		createRandom (prefix = '') {
+			// will always start with "c4…"
+			return prefix + btoa(Math.random()).toLowerCase().substring(1, 17);
+		},
+
 
 		// ------------------------------------------------ logging, warning ---
 
@@ -123,39 +170,22 @@ OC = new Vue({
 			console.warn( message );
 		},
 
+
 		// -------------------------------------------- registration methods ---
 
 		registerNav ( app, payload ) {
-
-			var pr = new Promise((resolve, no) => {
-				this.nav.push(_.assign( {id: app }, payload ));
-				this.nextTick(resolve(`registered:${app}`));
-			})
-
-			return pr;
+			this.nav.push(_.assign( { app }, payload ));
 		},
 
-		removeNav() {},
+		registerExp( app, payload) {
 
-		// -------------------------------------------------------- EVENTBUS ---
+			if (typeof payload != 'object' && _.isEmpty( payload.name ))
+				return false
 
-		emit( e, id ) {
-			OC.event.$emit(`${e}:${id}`);
+			this.exp.push( _.assignIn( { app }, payload ))
 		},
 
 		// --------------------------------------------------------- GETTERS ---
-
-		getConfig () {
-			return this.config;
-		},
-
-		getApps () {
-			return this.apps;
-		},
-
-		getActiveApp () {
-			return 'files';
-		},
 
 		getNavItems () {
 			return this.nav;

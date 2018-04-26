@@ -9,24 +9,16 @@ define({
 	 info : {
 
 		 // basic information
-		 id          : 'files',  // needs to match the folder name
-		 name        : "Files",
-		 author      : "Felix Heidecke, Vincent Petry, Thomas Müller",
-		 version     : "0.1.0",
-
-		 // app does not attach to the dom (defalt: false)
-		 silentBoot : false,
-
-		 // Key: Plugin name; value: local Method
-		 extend : {
-			 phoenixAlert : "setup",
-		 }
+		 id          : 'demo_full',  // needs to match the folder name
+		 name        : "I love fullscreen",
+		 author      : "Felix Heidecke",
+		 version     : "0.1.0"
 	 },
 
 	setup : () => {
 		OC.registerNav('files', {
-			name: "Files",
-			iconMaterial: 'shopping_cart',
+			name: "Fullscreen",
+			iconMaterial: 'face',
 			route: '/'
 		});
 	},
