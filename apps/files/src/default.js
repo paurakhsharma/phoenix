@@ -32,7 +32,10 @@ const router = new VueRouter({
 
 const app = new Vue({
     router,
-	template: '<router-view></router-view>'
+	template: '<router-view></router-view>',
+	mounted () {
+		this.$emit('mounted')
+	}
 });
 
 export default define(app);

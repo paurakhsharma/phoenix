@@ -7,7 +7,7 @@
   "main": "core/core.bundle.js",
   "scripts": {
     "watch": "webpack --progress --colors --watch --mode 'development'",
-    "build": "webpack -p"
+    "build": "webpack -p --mode 'production'"
   },
   "author": "Felix Heidecke",
   "license": "AGPL-1.0",

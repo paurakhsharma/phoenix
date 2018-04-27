@@ -3,7 +3,7 @@ module.exports = {
 	entry: './src/default.js',
 	resolve: {
 		alias: {
-			vue: 'vue/dist/vue.js'
+			vue: 'vue/dist/vue.min.js'
 		}
 	},
 	output: {
@@ -26,7 +26,6 @@ module.exports = {
 				use: [
 					'vue-style-loader',
 					'vue-html-loader',
-					'css-loader',
 					'css-loader',
 					'less-loader'
 				]
