@@ -20,7 +20,10 @@
     "accessibility-tests": "node node_modules/axe-cli/axe-cli --exit --disable page-has-heading-one,meta-viewport",
     "accessibility-tests-drone": "node node_modules/axe-cli/axe-cli --exit --disable page-has-heading-one,meta-viewport",
     "acceptance-tests": "cucumber-js --require-module @babel/register --require-module @babel/polyfill --require tests/acceptance/setup-local.js --require tests/acceptance/stepDefinitions --format node_modules/cucumber-pretty tests/acceptance/features -t 'not @skip'",
-    "acceptance-tests-drone": "cucumber-js --require-module @babel/register --require-module @babel/polyfill --require tests/acceptance/setup-drone.js --require tests/acceptance/stepDefinitions --format node_modules/cucumber-pretty tests/acceptance/features -t 'not @skip'"
+    "acceptance-tests-drone": "cucumber-js --require-module @babel/register --require-module @babel/polyfill --require tests/acceptance/setup-drone.js --require tests/acceptance/stepDefinitions --format node_modules/cucumber-pretty tests/acceptance/features -t 'not @skip'",
+    "cy:open": "cypress open",
+    "cy:run": "cypress run",
+    "cy:run-ci": "wait-on http://localhost:8300 && cypress run --record --key 44688dc2-09e2-4f50-9fbe-38f228a193b6"
   },
   "author": "Felix Heidecke",
   "license": "AGPL-3.0",
@@ -39,6 +42,8 @@
     "css-loader": "^2.1.0",
     "cucumber": "^5.1.0",
     "cucumber-pretty": "^1.5.0",
+    "cypress": "^3.1.5",
+    "cypress-cucumber-preprocessor": "^1.11.0",
     "easygettext": "^2.7.0",
     "eslint": "^5.15.1",
     "eslint-config-standard": "^12.0.0",
@@ -71,6 +76,7 @@
     "vuex": "^3.1.0",
     "vuex-persist": "^2.0.0",
     "vuex-router-sync": "^5.0.0",
+    "wait-on": "^3.2.0",
     "webpack": "^4.29.6",
     "webpack-cli": "^3.2.3",
     "webpack-copy-plugin": "^0.0.4",

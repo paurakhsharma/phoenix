@@ -1,0 +1,9 @@
+{
+  "baseUrl": "http://localhost:8300",
+  "cypress-cucumber-preprocessor": {
+    "step_definitions": "cypress/support/step_definitions/"
+  },
+  "ignoreTestFiles": "*.js",
+  "chromeWebSecurity": false,
+  "projectId": "83kcmb"
+}
